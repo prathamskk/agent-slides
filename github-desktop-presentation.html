@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Desktop 101 — The Easiest Way to Use GitHub</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ===========================================
+           FIXED 16:9 STAGE: MANDATORY BASE STYLES
+           =========================================== */
+        :root {
+            --stage-bg: #090d16;
+            --slide-bg: #0d1117;
+            --panel-bg: #161b22;
+            --panel-header: #21262d;
+            --border-color: #30363d;
+            --text-main: #c9d1d9;
+            --text-heading: #f0f6fc;
+            --text-muted: #8b949e;
+            --accent-green: #39d353;
+            --accent-blue: #58a6ff;
+            --accent-purple: #bc8cff;
+            --accent-orange: #d29922;
+            --accent-red: #ff7b72;
+            --accent-cyan: #38bdf8;
+            --code-bg: #0d1117;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-sans: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: var(--stage-bg);
+            font-family: var(--font-mono);
+            color: var(--text-main);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: var(--stage-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--stage-bg);
+            box-sizing: border-box;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 70px 90px;
+            box-sizing: border-box;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            background: radial-gradient(circle at 50% 20%, #161e2e 0%, #090d16 80%);
+        }
+
+        .slide.active {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+
+        /* Scanline CRT texture overlay */
+        .scanlines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 999;
+            background: repeating-linear-gradient(0deg,
+                    rgba(0, 0, 0, 0.05) 0px,
+                    rgba(0, 0, 0, 0.05) 1px,
+                    transparent 1px,
+                    transparent 3px);
+        }
+
+        /* ===========================================
+           TERMINAL WINDOW LAYOUT & COMPONENTS
+           =========================================== */
+        .term-window {
+            width: 1460px;
+            height: 860px;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), 0 0 1px rgba(56, 189, 248, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .term-header {
+            background: var(--panel-header);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-color);
+            user-select: none;
+        }
+
+        .term-dots {
+            display: flex;
+            gap: 10px;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+        }
+
+        .dot-red {
+            background: var(--accent-red);
+        }
+
+        .dot-yellow {
+            background: var(--accent-orange);
+        }
+
+        .dot-green {
+            background: var(--accent-green);
+        }
+
+        .term-title {
+            color: var(--text-muted);
+            font-size: 16px;
+            font-weight: 600;
+            margin-left: auto;
+            margin-right: auto;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .term-title-badge {
+            background: rgba(57, 211, 83, 0.15);
+            color: var(--accent-green);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .term-body {
+            padding: 50px 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex: 1;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* Typography & Terminal Headers */
+        .command-line {
+            font-size: 20px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .prompt {
+            color: var(--accent-blue);
+            font-weight: 700;
+        }
+
+        .cmd-text {
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .slide-heading {
+            font-family: var(--font-sans);
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--text-heading);
+            margin: 0 0 12px 0;
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+        }
+
+        .slide-subtitle {
+            font-size: 22px;
+            color: var(--text-muted);
+            margin: 0 0 36px 0;
+            line-height: 1.5;
+            font-weight: 400;
+        }
+
+        /* Grid Layouts */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+            flex: 1;
+        }
+
+        .grid-3col {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px;
+            flex: 1;
+        }
+
+        /* Card Panels */
+        .card {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .card-accent-green {
+            border-left: 5px solid var(--accent-green);
+        }
+
+        .card-accent-blue {
+            border-left: 5px solid var(--accent-blue);
+        }
+
+        .card-accent-purple {
+            border-left: 5px solid var(--accent-purple);
+        }
+
+        .card-accent-orange {
+            border-left: 5px solid var(--accent-orange);
+        }
+
+        .card-accent-red {
+            border-left: 5px solid var(--accent-red);
+        }
+
+        .card-title {
+            font-family: var(--font-sans);
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-text {
+            font-size: 17px;
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .code-snippet {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px 20px;
+            font-size: 16px;
+            line-height: 1.7;
+            color: var(--text-main);
+            overflow-x: auto;
+        }
+
+        .c-comment {
+            color: #8b949e;
+            font-style: italic;
+        }
+
+        .c-keyword {
+            color: var(--accent-red);
+        }
+
+        .c-string {
+            color: #a5d6ff;
+        }
+
+        .c-fn {
+            color: var(--accent-purple);
+        }
+
+        .c-var {
+            color: var(--accent-orange);
+        }
+
+        /* Step Badge */
+        .step-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: rgba(57, 211, 83, 0.15);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        /* Bullet lists */
+        .term-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .term-list li {
+            position: relative;
+            padding-left: 28px;
+            font-size: 18px;
+            line-height: 1.6;
+            color: var(--text-main);
+        }
+
+        .term-list li::before {
+            content: "➜";
+            position: absolute;
+            left: 0;
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        /* Hero / Large CTA Cards */
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(57, 211, 83, 0.08) 100%);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            padding: 32px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .hero-banner-title {
+            font-family: var(--font-sans);
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin: 0 0 8px 0;
+        }
+
+        .hero-banner-desc {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* Footer inside Terminal */
+        .term-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            margin-top: auto;
+            font-size: 15px;
+            color: var(--text-muted);
+        }
+
+        .blinking-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 20px;
+            background: var(--accent-green);
+            margin-left: 4px;
+            vertical-align: middle;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            50% {
+                opacity: 1;
+            }
+
+            51%,
+            100% {
+                opacity: 0;
+            }
+        }
+
+        /* Animation reveals */
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .slide.active .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .slide.active .reveal:nth-child(1) {
+            transition-delay: 0.1s;
+        }
+
+        .slide.active .reveal:nth-child(2) {
+            transition-delay: 0.2s;
+        }
+
+        .slide.active .reveal:nth-child(3) {
+            transition-delay: 0.3s;
+        }
+
+        .slide.active .reveal:nth-child(4) {
+            transition-delay: 0.4s;
+        }
+
+        /* Slide Navigation Bar (Outside Stage) */
+        .deck-controls {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(22, 27, 34, 0.9);
+            border: 1px solid var(--border-color);
+            padding: 10px 24px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .nav-dots {
+            display: flex;
+            gap: 10px;
+        }
+
+        .dot-chip {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot-chip.active {
+            background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+            transform: scale(1.2);
+        }
+
+        .slide-counter {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .edit-hint {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(22, 27, 34, 0.85);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="deck-viewport">
+        <div class="scanlines"></div>
+        <div class="deck-stage" id="stage">
+
+            <!-- SLIDE 1: Title Slide -->
+            <div class="slide active">
+                <div class="term-window">
+                    <div class="term-header">
+                        <div class="term-dots">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                        <div class="term-title">
+                            <span>bash — github-desktop-101.sh</span>
+                            <span class="term-title-badge">MAIN</span>
+                        </div>
+                    </div>
+                    <div class="term-body">
+                        <div>
+                            <div class="command-line reveal">
+                                <span class="prompt">user@developer-pc:~$</span>
+                                <span class="cmd-text">./launch-tutorial.sh --app "GitHub Desktop"</span>
+                            </div>
+                            <h1 class="slide-heading reveal">GitHub Desktop 101</h1>
+                            <p class="slide-subtitle reveal">The Easiest Way to Master Git & GitHub — Zero Terminal
+                                Commands Required.</p>
+                        </div>
+
+                        <div class="grid-3col reveal">
+                            <div class="card card-accent-green">
+                                <h3 class="card-title">🚀 No CLI Overhead</h3>
+                                <p class="card-text">Say goodbye to remembering complex terminal commands. Perform all
+                                    Git operations with clear, visual controls.</p>
+                            </div>
+                            <div class="card card-accent-blue">
+                                <h3 class="card-title">🔍 Visual Diffs</h3>
+                                <p class="card-text">Inspect line-by-line changes before saving. Stage exact lines of
+                                    code with instant side-by-side comparison.</p>
+                            </div>
+                            <div class="card card-accent-purple">
+                                <h3 class="card-title">🤝 1-Click Collaboration</h3>
+                                <p class="card-text">Create branches, push changes, and open Pull Requests directly on
+                                    GitHub with a single click.</p>
+                            </div>
+                        </div>
+
+                        <div class="hero-banner reveal">
+                            <div>
+                                <h4 class="hero-banner-title">Ready to level up your workflow?</h4>
+                                <p class="hero-banner-desc">Use [SPACE] or Right Arrow key to advance through the
+                                    tutorial slides.</p>
+                            </div>
+                            <span class="cmd-text" style="font-size: 20px;">[ PRESS SPACE → ]</span>
+                        </div>
+
+                        <div class="term-footer">
+                            <span>BRANCH: main*</span>
+                            <span>STATUS: TUTORIAL READY</span>
+                            <span>SLIDE 01 / 08<span class="blinking-cursor"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 2: GUI vs CLI -->
+            <div class="slide">
+                <div class="term-window">
+                    <div class="term-header">
+                        <div class="term-dots">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                        <div class="term-title">
+                            <span>compare.log — GUI vs CLI Workflow</span>
+                        </div>
+                    </div>
+                    <div class="term-body">
+                        <div>
+                            <div class="command-line reveal">
+                                <span class="prompt">user@developer-pc:~$</span>
+                                <span class="cmd-text">cat compare_workflows.md</span>
+                            </div>
+                            <h1 class="slide-heading reveal">Why Choose GitHub Desktop?</h1>
+                            <p class="slide-subtitle reveal">Git is essential, but command-line syntax can slow down
+                                beginners and create anxiety.</p>
+                        </div>
+
+                        <div class="grid-2col reveal">
+                            <div class="card card-accent-red">
+                                <h3 class="card-title">💻 Traditional Command Line (CLI)</h3>
+                                <div class="code-snippet">
+                                    <span class="c-comment"># Multiple commands required:</span><br>
+                                    $ git checkout -b feature-login<br>
+                                    $ git add src/app.js<br>
+                                    $ git commit -m <span class="c-string">"Fix auth bug"</span><br>
+                                    $ git push -u origin feature-login
+                                </div>
+                                <ul class="term-list">
+                                    <li>Easy to make typos or overwrite work</li>
+                                    <li>Hard to preview uncommitted line changes</li>
+                                    <li>Complex merge conflict handling</li>
+                                </ul>
+                            </div>
+
+                            <div class="card card-accent-green">
+                                <h3 class="card-title">✨ GitHub Desktop (GUI)</h3>
+                                <div class="code-snippet">
+                                    <span class="c-comment">// Clean visual buttons:</span><br>
+                                    [ Current Branch ] ➜ <span class="c-string">"New Branch"</span><br>
+                                    [ Summary Box ] ➜ <span class="c-string">"Commit to feature"</span><br>
+                                    [ Primary Button ] ➜ <span class="c-string">"Publish Branch"</span>
+                                </div>
+                                <ul class="term-list">
+                                    <li>Instant visual confirmation before pushing</li>
+                                    <li>Line-by-line interactive diff checkboxes</li>
+                                    <li>Built-in visual conflict resolution assistant</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="term-footer">
+                            <span>MODE: COMPARISON</span>
+                            <span>ADVANTAGE: 10X VISIBILITY</span>
+                            <span>SLIDE 02 / 08<span class="blinking-cursor"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 3: Getting Started & Auth -->
+            <div class="slide">
+                <div class="term-window">
+                    <div class="term-header">
+                        <div class="term-dots">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                        <div class="term-title">
+                            <span>setup.sh — Step 1: Install & Authenticate</span>
+                        </div>
+                    </div>
+                    <div class="term-body">
+                        <div>
+                            <div class="command-line reveal">
+                                <span class="prompt">user@developer-pc:~$</span>
+                                <span class="cmd-text">./step1_install_and_auth.sh</span>
+                            </div>
+                            <h1 class="slide-heading reveal">Step 1: Install & Sign In</h1>
+                            <p class="slide-subtitle reveal">Get set up in under 60 seconds with automated account
+                                synchronization.</p>
+                        </div>
+
+                        <div class="grid-3col reveal">
+                            <div class="card card-accent-blue">
+                                <div class="card-title">
+                                    <span class="step-badge">1</span> Download App
+                                </div>
+                                <p class="card-text">Visit <strong>desktop.github.com</strong> and download GitHub
+                                    Desktop for Windows or macOS.</p>
+                                <div class="code-snippet" style="font-size: 14px;">
+                                    Supports: Windows 10/11 (64-bit) & macOS 10.15+
+                                </div>
+                            </div>
+
+                            <div class="card card-accent-green">
+                                <div class="card-title">
+                                    <span class="step-badge">2</span> Sign In
+                                </div>
+                                <p class="card-text">Click <strong>"Sign in to GitHub.com"</strong> inside the app. It
+                                    opens your browser to authorize in 1 click.</p>
+                                <div class="code-snippet" style="font-size: 14px;">
+                                    Supports 2FA & Enterprise Accounts
+                                </div>
+                            </div>
+
+                            <div class="card card-accent-purple">
+                                <div class="card-title">
+                                    <span class="step-badge">3</span> Auto-Configure
+                                </div>
+                                <p class="card-text">Your Git Name, Email, and SSH/HTTPS tokens are configured
+                                    automatically behind the scenes.</p>
+                                <div class="code-snippet" style="font-size: 14px;">
+                                    No manual SSH key creation needed!
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="term-footer">
+                            <span>SETUP: COMPLETE</span>
+                            <span>AUTH: CONNECTED TO GITHUB</span>
+                            <span>SLIDE 03 / 08<span class="blinking-cursor"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 4: Cloning Repositories -->
+            <div class="slide">
+                <div class="term-window">
+                    <div class="term-header">
+                        <div class="term-dots">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                        <div class="term-title">
+                            <span>clone.sh — Step 2: Clone Your First Repository</span>
+                        </div>
+                    </div>
+                    <div class="term-body">
+                        <div>
+                            <div class="command-line reveal">
+                                <span class="prompt">user@developer-pc:~$</span>
+                                <span class="cmd-text">./step2_clone_repo.sh</span>
+                            </div>
+                            <h1 class="slide-heading reveal">Step 2: Clone a Repository</h1>
+                            <p class="slide-subtitle reveal">Download any cloud repository to your local computer with
+                                zero URL copying.</p>
+                        </div>
+
+                        <div class="grid-2col reveal">
+                            <div class="card card-accent-blue">
+                                <h3 class="card-title">📁 Method A: From the Desktop App</h3>
+                                <ul class="term-list">
+                                    <li>Click <strong>File ➜ Clone Repository</strong></li>
+                                    <li>Select your repository directly from the searchable list of your GitHub projects
+                                    </li>
+                                    <li>Choose your local save path (e.g. <code>Documents/GitHub</code>) and click
+                                        <strong>Clone</strong>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="card card-accent-purple">
+                                <h3 class="card-title">🌐 Method B: From GitHub.com</h3>
+                                <ul class="term-list">
+                                    <li>Navigate to any repository on <strong>GitHub.com</strong></li>
+                                    <li>Click the green <code>&lt;&gt; Code</code> dropdown button</li>
+                                    <li>Select <strong>"Open with GitHub Desktop"</strong></li>
+                                    <li>App launches automatically and starts downloading!</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="hero-banner reveal" style="padding: 20px 30px;">
+                            <span style="color: var(--accent-green); font-size: 20px;">💡 PRO TIP:</span>
+                            <span style="color: var(--text-main); font-size: 17px;">Click <strong>"Open in VS
+                                    Code"</strong> directly inside GitHub Desktop to jump straight into editing!</span>
+                        </div>
+
+                        <div class="term-footer">
+                            <span>ACTION: CLONE REPO</span>
+                            <span>LOCAL SYNC: READY</span>
+                            <span>SLIDE 04 / 08<span class="blinking-cursor"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 5: Branching -->
+            <div class="slide">
+                <div class="term-window">
+                    <div class="term-header">
+                        <div class="term-dots">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                        <div class="term-title">
+                            <span>branching.log — Step 3: Create & Manage Branches</span>
+                        </div>
+                    </div>
+                    <div class="term-body">
+                        <div>
+                            <div class="command-line reveal">
+                                <span class="prompt">user@developer-pc:~$</span>
+                                <span class="cmd-text">./step3_branch_management.sh</span>
+                            </div>
+                            <h1 class="slide-heading reveal">Step 3: Branching Without Fear</h1>
+                            <p class="slide-subtitle reveal">Isolate new features and experiments without risking your
+                                working code.</p>
+                        </div>
+
+                        <div class="grid-3col reveal">
+                            <div class="card card-accent-green">
+                                <div class="card-title">1. Create Branch</div>
+                                <p class="card-text">Click the <strong>Current Branch</strong> bar at the top ➜ Click
+                                    <strong>New Branch</strong> ➜ Type name (e.g. <code>feature-navbar</code>).
+                                </p>
+                            </div>
+
+                            <div class="card card-accent-blue">
+                                <div class="card-title">2. Smart Stashing</div>
+                                <p class="card-text">Switching branches with uncommitted work? GitHub Desktop offers to
+                                    bring changes along or <strong>stash them safely</strong>.</p>
+                            </div>
+
+                            <div class="card card-accent-orange">
+                                <div class="card-title">3. Merge & Clean</div>
+                                <p class="card-text">Easily merge branches or delete completed feature branches with a
+                                    single click after pull request approval.</p>
+                            </div>
+                        </div>
+
+                        <div class="code-box reveal"
+                            style="background: var(--code-bg); border-left: 4px solid var(--accent-green);">
+                            <span class="c-comment">// Best Practice Rule:</span><br>
+                            Always keep your <span class="c-string">"main"</span> branch clean! Create a new branch for
+                            every feature, bug fix, or experiment.
+                        </div>
+
+                        <div class="term-footer">
+                            <span>CURRENT BRANCH: feature-navbar*</span>
+                            <span>SAFETY: STASH ENABLED</span>
+                            <span>SLIDE 05 / 08<span class="blinking-cursor"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 6: Committing & Diffs -->
+            <div class="slide">
+                <div class="term-window">
+                    <div class="term-header">
+                        <div class="term-dots">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                        <div class="term-title">
+                            <span>diff-viewer.patch — Step 4: Inspect & Commit</span>
+                        </div>
+                    </div>
+                    <div class="term-body">
+                        <div>
+                            <div class="command-line reveal">
+                                <span class="prompt">user@developer-pc:~$</span>
+                                <span class="cmd-text">./step4_visual_commit.sh</span>
+                            </div>
+                            <h1 class="slide-heading reveal">Step 4: Inspect Diffs & Commit</h1>
+                            <p class="slide-subtitle reveal">Never save broken code. See exact line changes with
+                                color-coded diff highlights.</p>
+                        </div>
+
+                        <div class="grid-2col reveal">
+                            <div class="card card-accent-green">
+                                <h3 class="card-title">1. Review Changed Files</h3>
+                                <ul class="term-list">
+                                    <li>Left sidebar shows all modified, added, or deleted files</li>
+                                    <li><span style="color: var(--accent-green);">+ Green lines</span> = Added code</li>
+                                    <li><span style="color: var(--accent-red);">- Red lines</span> = Removed code</li>
+                                    <li>Check/uncheck boxes to select exactly what to commit</li>
+                                </ul>
+                            </div>
+
+                            <div class="card card-accent-blue">
+                                <h3 class="card-title">2. Save Your Snapshot</h3>
+                                <div class="code-snippet">
+                                    <strong>Summary (Required):</strong><br>
+                                    <span class="c-string">"Add responsive navigation bar"</span><br><br>
+                                    <strong>Description (Optional):</strong><br>
+                                    <span class="c-comment">"Includes mobile toggle menu and logo assets"</span>
+                                </div>
+                                <p style="margin-top: 10px; font-size: 15px; color: var(--accent-green);">➜ Click
+                                    <strong>"Commit to feature-navbar"</strong>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="term-footer">
+                            <span>FILES CHANGED: 3</span>
+                            <span>LINES: +45 / -12</span>
+                            <span>SLIDE 06 / 08<span class="blinking-cursor"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 7: Push & PR -->
+            <div class="slide">
+                <div class="term-window">
+                    <div class="term-header">
+                        <div class="term-dots">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                        <div class="term-title">
+                            <span>publish.sh — Step 5: Push & Open PRs</span>
+                        </div>
+                    </div>
+                    <div class="term-body">
+                        <div>
+                            <div class="command-line reveal">
+                                <span class="prompt">user@developer-pc:~$</span>
+                                <span class="cmd-text">./step5_push_and_pr.sh</span>
+                            </div>
+                            <h1 class="slide-heading reveal">Step 5: Push & Create Pull Requests</h1>
+                            <p class="slide-subtitle reveal">Sync your local commits to GitHub and invite teammates to
+                                review.</p>
+                        </div>
+
+                        <div class="grid-2col reveal">
+                            <div class="card card-accent-purple">
+                                <h3 class="card-title">⬆️ Push to GitHub</h3>
+                                <p class="card-text">After committing locally, your changes are on your computer. Click
+                                    the big <strong>"Publish Branch"</strong> or <strong>"Push origin"</strong> button
+                                    at the top to upload them to GitHub.</p>
+                                <div class="code-snippet">
+                                    Status: <span style="color: var(--accent-green);">1 commit waiting to push</span>
+                                </div>
+                            </div>
+
+                            <div class="card card-accent-green">
+                                <h3 class="card-title">🔀 Create Pull Request</h3>
+                                <p class="card-text">Once pushed, GitHub Desktop displays a button: <strong>"Preview
+                                        Pull Request"</strong> or <strong>"Create Pull Request"</strong>.</p>
+                                <p class="card-text">Clicking it opens your browser directly to GitHub.com with all
+                                    commit details auto-filled!</p>
+                            </div>
+                        </div>
+
+                        <div class="hero-banner reveal" style="padding: 20px 30px;">
+                            <span style="color: var(--accent-blue); font-weight: bold; font-size: 18px;">🎉
+                                Congratulations!</span>
+                            <span style="color: var(--text-main); font-size: 17px;">You just completed a professional
+                                Git workflow without typing a single terminal command!</span>
+                        </div>
+
+                        <div class="term-footer">
+                            <span>REMOTE: ORIGIN/MAIN</span>
+                            <span>PR STATUS: OPEN</span>
+                            <span>SLIDE 07 / 08<span class="blinking-cursor"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 8: Recap & Summary -->
+            <div class="slide">
+                <div class="term-window">
+                    <div class="term-header">
+                        <div class="term-dots">
+                            <div class="dot dot-red"></div>
+                            <div class="dot dot-yellow"></div>
+                            <div class="dot dot-green"></div>
+                        </div>
+                        <div class="term-title">
+                            <span>recap.md — Workflow Summary</span>
+                        </div>
+                    </div>
+                    <div class="term-body">
+                        <div>
+                            <div class="command-line reveal">
+                                <span class="prompt">user@developer-pc:~$</span>
+                                <span class="cmd-text">cat cheat_sheet.md</span>
+                            </div>
+                            <h1 class="slide-heading reveal">Your 5-Step GitHub Desktop Cheat Sheet</h1>
+                            <p class="slide-subtitle reveal">Keep this simple 5-step loop in mind for every project.</p>
+                        </div>
+
+                        <div class="grid-3col reveal" style="grid-template-columns: repeat(5, 1fr); gap: 16px;">
+                            <div class="card card-accent-blue" style="padding: 20px;">
+                                <div style="font-size: 28px; font-weight: 800; color: var(--accent-blue);">01</div>
+                                <h4 style="margin: 8px 0; color: #fff;">Clone</h4>
+                                <p style="font-size: 14px; color: var(--text-muted); margin: 0;">Download repo to your
+                                    PC</p>
+                            </div>
+                            <div class="card card-accent-green" style="padding: 20px;">
+                                <div style="font-size: 28px; font-weight: 800; color: var(--accent-green);">02</div>
+                                <h4 style="margin: 8px 0; color: #fff;">Branch</h4>
+                                <p style="font-size: 14px; color: var(--text-muted); margin: 0;">Create feature branch
+                                </p>
+                            </div>
+                            <div class="card card-accent-purple" style="padding: 20px;">
+                                <div style="font-size: 28px; font-weight: 800; color: var(--accent-purple);">03</div>
+                                <h4 style="margin: 8px 0; color: #fff;">Edit</h4>
+                                <p style="font-size: 14px; color: var(--text-muted); margin: 0;">Write code in VS Code
+                                </p>
+                            </div>
+                            <div class="card card-accent-orange" style="padding: 20px;">
+                                <div style="font-size: 28px; font-weight: 800; color: var(--accent-orange);">04</div>
+                                <h4 style="margin: 8px 0; color: #fff;">Commit</h4>
+                                <p style="font-size: 14px; color: var(--text-muted); margin: 0;">Inspect diff & save</p>
+                            </div>
+                            <div class="card card-accent-red" style="padding: 20px;">
+                                <div style="font-size: 28px; font-weight: 800; color: var(--accent-red);">05</div>
+                                <h4 style="margin: 8px 0; color: #fff;">Push & PR</h4>
+                                <p style="font-size: 14px; color: var(--text-muted); margin: 0;">Sync & open PR</p>
+                            </div>
+                        </div>
+
+                        <div class="hero-banner reveal"
+                            style="background: rgba(57, 211, 83, 0.1); border-color: var(--accent-green);">
+                            <div>
+                                <h4 class="hero-banner-title" style="color: var(--accent-green);">🚀 You are now ready
+                                    to build on GitHub!</h4>
+                                <p class="hero-banner-desc">Download GitHub Desktop today at
+                                    <strong>desktop.github.com</strong>
+                                </p>
+                            </div>
+                            <span class="cmd-text" style="font-size: 18px;">[ RESTART SLIDES ↺ ]</span>
+                        </div>
+
+                        <div class="term-footer">
+                            <span>TUTORIAL COMPLETE</span>
+                            <span>HAPPY CODING!</span>
+                            <span>SLIDE 08 / 08<span class="blinking-cursor"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Presentation Navigation Controls -->
+    <div class="deck-controls">
+        <button class="nav-btn" id="prev-btn" title="Previous (Left Arrow)">◄</button>
+        <div class="nav-dots" id="dots-container"></div>
+        <button class="nav-btn" id="next-btn" title="Next (Right Arrow / Space)">►</button>
+        <div class="slide-counter" id="counter">01 / 08</div>
+    </div>
+
+    <div class="edit-hint">Press <strong>E</strong> to toggle text edit mode</div>
+
+    <script>
+        /* ===========================================
+           STAGE SCALING & PRESENTATION ENGINE
+           =========================================== */
+        const slides = Array.from(document.querySelectorAll('.slide'));
+        const totalSlides = slides.length;
+        let currentIndex = 0;
+        let isEditMode = false;
+
+        const stage = document.getElementById('stage');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const counterEl = document.getElementById('counter');
+        const dotsContainer = document.getElementById('dots-container');
+
+        // Scale Stage to 1920x1080 16:9 Invariant
+        function fitStage() {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const scale = Math.min(vw / 1920, vh / 1080);
+            const x = (vw - 1920 * scale) / 2;
+            const y = (vh - 1080 * scale) / 2;
+            stage.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+        }
+
+        window.addEventListener('resize', fitStage);
+        fitStage();
+
+        // Build Nav Dots
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.classList.add('dot-chip');
+            if (i === 0) dot.classList.add('active');
+            dot.addEventListener('click', () => goToSlide(i));
+            dotsContainer.appendChild(dot);
+        });
+
+        const dots = Array.from(dotsContainer.children);
+
+        function updateSlide() {
+            slides.forEach((slide, idx) => {
+                if (idx === currentIndex) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+
+            dots.forEach((dot, idx) => {
+                if (idx === currentIndex) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+
+            counterEl.textContent = `${String(currentIndex + 1).padStart(2, '0')} / ${String(totalSlides).padStart(2, '0')}`;
+        }
+
+        function goToSlide(index) {
+            if (index >= 0 && index < totalSlides) {
+                currentIndex = index;
+                updateSlide();
+            }
+        }
+
+        function nextSlide() {
+            if (currentIndex < totalSlides - 1) {
+                currentIndex++;
+            } else {
+                currentIndex = 0; // Loop back to start
+            }
+            updateSlide();
+        }
+
+        function prevSlide() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateSlide();
+            }
+        }
+
+        prevBtn.addEventListener('click', prevSlide);
+        nextBtn.addEventListener('click', nextSlide);
+
+        // Keyboard Controls
+        window.addEventListener('keydown', (e) => {
+            if (isEditMode) return; // Disable keyboard slide advancement during text editing
+
+            if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'PageDown') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                goToSlide(0);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                goToSlide(totalSlides - 1);
+            } else if (e.key === 'e' || e.key === 'E') {
+                toggleEditMode();
+            }
+        });
+
+        // Toggle Inline Edit Mode
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            document.body.contentEditable = isEditMode ? 'true' : 'false';
+            const hint = document.querySelector('.edit-hint');
+            if (isEditMode) {
+                hint.style.background = '#39d353';
+                hint.style.color = '#000';
+                hint.innerHTML = '<strong>EDIT MODE ACTIVE</strong> (Press E to exit)';
+            } else {
+                hint.style.background = 'rgba(22, 27, 34, 0.85)';
+                hint.style.color = '#8b949e';
+                hint.innerHTML = 'Press <strong>E</strong> to toggle text edit mode';
+            }
+        }
+    </script>
+</body>
+
+</html>
